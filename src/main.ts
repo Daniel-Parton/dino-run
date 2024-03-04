@@ -1,4 +1,4 @@
-
+import './style.css';
 import Phaser from "phaser";
 import { Boot } from "./scenes/Boot";
 import { Preload } from "./scenes/Preload";
@@ -14,7 +14,7 @@ const config: Phaser.Types.Core.GameConfig = {
   physics: {
     default: 'arcade',
     arcade: {
-      debug: true
+      debug: false
     }
   },
   scale: {
