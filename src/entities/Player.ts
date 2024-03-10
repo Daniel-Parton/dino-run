@@ -1,24 +1,30 @@
+import { GAME_CONFIG } from "@/config";
+
 export class Player extends Phaser.Physics.Arcade.Sprite {
 
+  gameSpeed: number;
+  hasRanOnce: boolean = false;
   state: 'idle' | 'down' | 'running' | 'jumping' | 'dead' = 'idle';
   cursors: Phaser.Types.Input.Keyboard.CursorKeys;
   idleEvent: Phaser.Time.TimerEvent;
   idleBlinks: number = 0;
   inJumpLag: boolean;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'dino-run', 0);
+  constructor(scene: Phaser.Scene, gameSpeed: number) {
+    super(scene, 0, scene.scale.height, 'dino-run', 0);
+    this.gameSpeed = gameSpeed;
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.init();
   }
 
   init() {
-
     this.cursors = this.scene.input.keyboard.createCursorKeys();
-
+    this.setInteractive({ cursor: 'pointer' });
     this.setOrigin(0, 1)
+      .setDepth(1)
       .setGravityY(5000)
+      .setOffset(20, 0)
       .setCollideWorldBounds(true);
 
     this.setRegularHitBox();
@@ -26,10 +32,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);
     this.initAnimations();
     this.idle();
+
+    this.scene.events.on(GAME_CONFIG.events.started, this.run, this);
+    this.scene.events.on(GAME_CONFIG.events.died, this.die, this);
+    this.scene.events.on(GAME_CONFIG.events.restarted, this.run, this);
   }
 
   initAnimations() {
-
     this.anims.create({
       key: 'dino-idle',
       frames: this.anims.generateFrameNumbers('dino-run', { start: 0, end: 2 }),
@@ -61,6 +70,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   initSounds() {
     this.scene.sound.add('dino-hurt');
+    this.scene.sound.add('dino-run-start');
+    this.scene.sound.add('dino-down');
+    this.scene.sound.add('dino-jump');
   }
   
   update() {
@@ -70,13 +82,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const { space, down } = this.cursors;
     const isSpaceJustDown = Phaser.Input.Keyboard.JustDown(space!);
-    const isLeftClickDown = this.scene.input.mousePointer.leftButtonDown();
     const isOnFloor = (this.body as Phaser.Physics.Arcade.Body).onFloor();
-    const isDownJustDown = Phaser.Input.Keyboard.JustDown(down);
     const isDownJustUp = Phaser.Input.Keyboard.JustUp(down!);
+    
+    const pointer =this.scene.input.activePointer;
+    let isClickOrTouchDown = pointer.isDown && !pointer.rightButtonDown();
+    if(isClickOrTouchDown && this.state === 'idle' && !this.body.hitTest(pointer.x, pointer.y)) {
+      isClickOrTouchDown = false;
+    }
 
     if(isOnFloor) {
-      const isJumping = isSpaceJustDown || isLeftClickDown;
+      const isJumping = isSpaceJustDown || isClickOrTouchDown;
 
       if(isJumping) {
         this.jump();
@@ -96,6 +112,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   jump() {
     this.state = 'jumping';
+    this.scene.sound.play('dino-jump');
     if(this.idleEvent) {
       this.idleEvent.remove();
     }
@@ -112,9 +129,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   die() {
     this.state = 'dead';
+    this.stop();
     this.setTexture('dino-hurt', 0);
     this.scene.sound.play('dino-hurt');
     this.setRegularHitBox();
+      this.scene.tweens.add({
+        targets: this,
+        y: this.scene.scale.height,
+        duration: 250,
+        ease: 'Linear',
+        onComplete: () => {
+        },
+        callbackScope: this
+      });
+
   }
 
   restart() {
@@ -133,14 +161,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   run() {
+    if(!this.hasRanOnce) {
+       this.input.cursor = 'auto';
+      this.setInteractive({ cursor: 'default' });
+      this.hasRanOnce = true;
+      this.scene.sound.play('dino-run-start', { volume: 0.3 });
+    }
     this.state = 'running'
     this.play('dino-run', true);
     this.setRegularHitBox();
+    if(this.getBounds().left < 50) {
+      this.initRun();
+    }
   }
 
   getDown() {
     this.state = 'down'
     this.play('dino-down', true);
+    this.scene.sound.play('dino-down', { volume: 0.5 });
     this.body.setSize(this.body.width, 58);
     this.setOffset(60, 34);
   }

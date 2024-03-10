@@ -7,6 +7,7 @@ export class Boot extends Phaser.Scene {
   preload () {
     this.load.setPath('./assets');
     this.load.image('ground', 'ground.png');
+    this.load.image('cloud', 'cloud.png');
   }
 
   create() {

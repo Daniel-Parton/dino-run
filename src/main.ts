@@ -6,11 +6,16 @@ import { Play } from "./scenes/Play";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 1000,
   height: 340,
+  width: 1000,
+  min: {
+    width: 340,
+    height: 0
+  },
   parent: 'game-container',
   pixelArt: true,
   transparent: true,
+  autoFocus: true,
   physics: {
     default: 'arcade',
     arcade: {
@@ -19,8 +24,8 @@ const config: Phaser.Types.Core.GameConfig = {
   },
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
-  },
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  } as any,
   scene: [
     Boot,
     Preload,

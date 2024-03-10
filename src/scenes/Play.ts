@@ -1,8 +1,10 @@
 import { GAME_CONFIG } from '@/config';
-import { ImageButton } from '@/entities/ImageButton';
+import { Clouds } from '@/entities/Clouds';
+import { GameOver } from '@/entities/GameOver';
+import { Obstacles } from '@/entities/Obstacles';
 import { Player } from '@/entities/Player';
-
-type MinMax = { min: number, max: number};
+import { Score } from '@/entities/Score';
+import { SoundToggle } from '@/entities/SoundToggle';
 
 export class Play extends Phaser.Scene {
 
@@ -11,106 +13,64 @@ export class Play extends Phaser.Scene {
   }
 
   isGameRunning: boolean = false;
-  gameSpeed: number = 750;
+  gameSpeedModifier: number = 1;
+  gameSpeedModifierIncrease: number = 0.1;
+  gameSpeedBase: number = 750;
+  backgroundMusic: Phaser.Sound.BaseSound;
+  backgroundLoseMusic: Phaser.Sound.BaseSound;
+  soundToggleButton: SoundToggle;
 
-  spawnInterval: number = 1500;
-  cleanupTimer: number = 0;
-  cleanupTimerInterval: number = 1000;
-  spawnTimer: number = 0;
-  spawnXRange: MinMax = { min: 600, max: 900 };
+  get gameSpeed() {
+    return this.gameSpeedBase * this.gameSpeedModifier;
+  }
 
-  gameOver: Phaser.GameObjects.Container;
-  gameOverText: Phaser.GameObjects.Image;
-  restartButton: Phaser.GameObjects.Image;
-
-  player: Player;
   ground: Phaser.GameObjects.TileSprite;
+  clouds: Clouds;
   startTrigger: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-
-  obstacles: Phaser.Physics.Arcade.Group;
-
-  obstacleLookup: {type: 'cactus' | 'bird', key: string }[] = [];
+  gameOver: GameOver;
+  score: Score;
+  player: Player;
+  obstacles: Obstacles;
 
   constructor() {
     super('Play');
-    //Make an array from cactusCount and birdsCount on the GAME_CONFIG object
-    for(let i = 1; i <= GAME_CONFIG.cactusCount; i++) {
-      this.obstacleLookup.push({ type: 'cactus', key: `cactus-${i}` });
-    }
-
-    for(let i = 1; i <= GAME_CONFIG.birdsCount; i++) {
-      this.obstacleLookup.push({ type: 'bird', key: `bird-${i}` });
-    }
   }
 
   create() {
     this.initEnvironment();
-    this.initGameOverScreen();
     this.initPlayer();
     this.initStartTrigger();
-
     this.handleCollisions();
+
+    this.events.on(GAME_CONFIG.events.scoreTierUpdated, this.increaseSpeed, this);
   }
 
-  update(time: number, delta: number): void {
+  update(_, delta: number): void {
     if(!this.isGameRunning) {
       return;
     }
     
-    this.spawnTimer += delta;
-    if(this.spawnTimer >= this.spawnInterval) {
-      this.spawnTimer = 0;
-      this.spawnObstacle();
-    }
-
-    this.cleanupTimer += delta;
-    if(this.cleanupTimer >= this.cleanupTimerInterval) {
-      this.cleanupTimer = 0;
-      this.obstacles.getChildren().forEach((o: Phaser.Physics.Arcade.Image) => {
-        if(o.getBounds().right < 0) {
-          this.obstacles.remove(o, true, true);
-        }
-      }, this);
-    }
-
     this.ground.tilePositionX += this.gameSpeed * delta / 1000;
   }
 
   initEnvironment() {
+    this.backgroundMusic = this.sound.add('background', { loop: true, volume: 0.05 });
+    this.backgroundLoseMusic = this.sound.add('background-lose', { loop: true, volume: 0.05 });
+    this.backgroundMusic.play();
+
     this.ground = this.add.tileSprite(0, this.scale.height, 88, 26, 'ground')
       .setOrigin(0, 1);
 
-    this.obstacles = this.physics.add.group();
-  }
-
-  initGameOverScreen() {
-    const spacing = 30;
-    this.gameOverText = this.add.image(0, -spacing, 'game-over')
-    .setVisible(false)
-    .setOrigin(0.5);
-
-  this.restartButton = new ImageButton(this, { 
-    x: 0, 
-    y: spacing, 
-    key: 'restart', 
-    onClick: () => {
-      this.handleRestart();
-    },
-    onClickThis: this,
-  })
-    .setOrigin(0.5)
-    .setVisible(false);
-
-    this.gameOver = this.add.container(this.scale.width / 2, this.scale.height / 2);
-    this.gameOver.add([this.gameOverText, this.restartButton]);
-    this.gameOver.setVisible(false);
-
-    this.gameOverText.setVisible(true);
-    this.restartButton.setVisible(true);
+    this.clouds = new Clouds(this, this.gameSpeed);
+    this.obstacles = new Obstacles(this, this.gameSpeed);
+    this.gameOver = new GameOver(this, this.handleRestart.bind(this) );
+    this.score = new Score(this);
+    this.soundToggleButton = new SoundToggle(this, { x: 2, y: 2 })
+      .setOrigin(0, 0);
   }
 
   initPlayer() {
-    this.player = new Player(this, 0, this.gameHeight);
+    this.player = new Player(this, this.gameSpeed);
   }
 
   initStartTrigger() {
@@ -125,12 +85,13 @@ export class Play extends Phaser.Scene {
       }
 
       //When the player hits the ground on the first jump we can then start the game
+      //This yeets the trigger out of the way so we don't need to worry about it
       this.startTrigger.body.reset(9999, 9999);
-      this.startGame();
+      this.start();
     });
   }
 
-  startGame() {
+  start() {
     //Grow the floor and then start running!
     this.tweens.add({
       targets: this.ground,
@@ -140,45 +101,35 @@ export class Play extends Phaser.Scene {
       callbackScope: this,
       onComplete: () => {
         this.isGameRunning = true;
-        this.player.run();
-        this.obstacles.setVelocityX(-200);
+        this.events.emit(GAME_CONFIG.events.started);
       },
     });
   }
 
-  spawnObstacle() {
-    const obstacleNumber = Math.floor(Math.random() * this.obstacleLookup.length) ;
-    const distance = Phaser.Math.Between(this.spawnXRange.min, this.spawnXRange.max); 
-    const obstacleData = this.obstacleLookup[obstacleNumber];
-
-    let obstacle: Phaser.Physics.Arcade.Image | Phaser.Physics.Arcade.Sprite;
-    if(obstacleData.type === 'bird') {
-      const h = this.gameHeight - Phaser.Math.Between(20, 70)
-      obstacle = this.obstacles.create(distance, h, obstacleData.key) as Phaser.Physics.Arcade.Sprite;
-    } else {
-      obstacle = this.obstacles  .create(distance, this.gameHeight, obstacleData.key) as Phaser.Physics.Arcade.Image;
-    }
-
-    obstacle.setOrigin(0, 1)
-      .setImmovable(true)
-      .setVelocityX(-this.gameSpeed);
-   
-  }
-
   handleCollisions() {
-    this.physics.add.collider(this.player, this.obstacles, () => {
-      this.handleDeath();
+    this.physics.add.collider(this.player, this.obstacles, (_, o: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody) => {
+      if(this.isGameRunning) {
+        this.handleDeath(o);
+        this.events.emit(GAME_CONFIG.events.died);
+      }
     }, null, this);
   }
 
-  handleDeath() {
+  handleDeath(obstacle: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody) {
     this.isGameRunning = false;
-    this.physics.pause();
-    this.player.die();
-    this.spawnTimer = 0;
-    this.cleanupTimer = 0;
-    this.gameSpeed = 500;
-    this.gameOver.setVisible(true);
+    this.backgroundMusic.stop();
+    this.backgroundLoseMusic.play();
+    this.time.delayedCall(50, () => {
+      this.physics.pause();
+    }, null, this);
+    if(obstacle.texture.key.includes('bird')) {
+      this.tweens.add({
+        targets: obstacle,
+        x: -100,
+        duration: 500,
+        ease: 'Linear',
+      });
+    }
   }
 
   handleRestart() {
@@ -187,10 +138,22 @@ export class Play extends Phaser.Scene {
     this.obstacles.clear(true, true);
     this.player.setVelocityY(0);
     this.anims.resumeAll();
-    setTimeout(() => {
-      this.player.restart();
+    this.resetSpeed();
+    this.backgroundLoseMusic.stop();
+    this.backgroundMusic.play();
+    this.time.delayedCall(250, () => {
+      this.events.emit(GAME_CONFIG.events.restarted);
       this.isGameRunning = true;  
-    }, 250);
-    
+    }, null, this);
+  }
+
+  resetSpeed() {
+    this.gameSpeedModifier = 1;
+    this.events.emit(GAME_CONFIG.events.speedUpdated, this.gameSpeed);
+  }
+
+  increaseSpeed() {
+    this.gameSpeedModifier += this.gameSpeedModifierIncrease;
+    this.events.emit(GAME_CONFIG.events.speedUpdated, this.gameSpeed);
   }
 }
