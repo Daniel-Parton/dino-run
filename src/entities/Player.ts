@@ -6,6 +6,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasRanOnce: boolean = false;
   state: 'idle' | 'down' | 'running' | 'jumping' | 'dead' = 'idle';
   cursors: Phaser.Types.Input.Keyboard.CursorKeys;
+  idleHitBox: Phaser.Geom.Rectangle;
   idleEvent: Phaser.Time.TimerEvent;
   idleBlinks: number = 0;
   inJumpLag: boolean;
@@ -20,6 +21,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   init() {
     this.cursors = this.scene.input.keyboard.createCursorKeys();
+    this.idleHitBox = new Phaser.Geom.Rectangle(0, 50, 100, this.scene.scale.height - 50);
     this.setInteractive({ cursor: 'pointer' });
     this.setOrigin(0, 1)
       .setDepth(1)
@@ -87,8 +89,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     
     const pointer =this.scene.input.activePointer;
     let isClickOrTouchDown = pointer.isDown && !pointer.rightButtonDown();
-    if(isClickOrTouchDown && this.state === 'idle' && !this.body.hitTest(pointer.x, pointer.y)) {
-      isClickOrTouchDown = false;
+
+    //When in idle state we want the user to click on the dino to start the game
+    //On mobile the hit-box is a little small so the idle hit-box makes it a bit easier
+    if(isClickOrTouchDown && this.state === 'idle') {
+      if(!this.idleHitBox.contains(pointer.x, pointer.y)) {
+        isClickOrTouchDown = false;
+      }
     }
 
     if(isOnFloor) {
