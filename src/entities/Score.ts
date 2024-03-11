@@ -41,14 +41,14 @@ export class Score extends Phaser.GameObjects.Container {
       fontSize: 25,
       fontFamily: 'Arial',
       color: '#535353',
-      resolution: 5
+      resolution: 2
     }).setOrigin(1, 0);
 
     this.bestTextPrefix = this.scene.add.text(gameWidth - this.currentText.width - this.bestText.width - spacing - (spacing / 2), 0, 'HI', {
       fontSize: 25,
       fontFamily: 'Arial',
       color: '#535353',
-      resolution: 5
+      resolution: 2
     }).setOrigin(1, 0);
 
     

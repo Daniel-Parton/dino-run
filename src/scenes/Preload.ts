@@ -13,12 +13,12 @@ export class Preload extends Phaser.Scene {
     this.load.image('dino-idle', 'dino-idle-2.png');
 
     this.load.image('dino-hurt', 'dino-hurt.png');
-    this.load.audio('dino-hurt', 'dino-hurt.mp3');
+    this.loadAudio('dino-hurt');
 
-    this.load.audio('dino-jump', 'dino-jump.mp3');
-    this.load.audio('dino-run-start', 'dino-run-start.mp3');
+    this.loadAudio('dino-jump');
+    this.loadAudio('dino-run-start');
     
-    this.load.audio('dino-down', 'dino-down.mp3');
+    this.loadAudio('dino-down');
     this.load.spritesheet("dino-down", 'dino-down-2.png', {
       frameWidth: 118,
       frameHeight: 94
@@ -52,11 +52,11 @@ export class Preload extends Phaser.Scene {
     this.load.image('sound-off', 'sound-off.png');
 
     //Score
-    this.load.audio('score', 'score.mp3');
+    this.loadAudio('score');
 
     //Background
-    this.load.audio('background-lose', 'background-lose.mp3');
-    this.load.audio('background', 'background.mp3');
+    this.loadAudio('background-lose');
+    this.loadAudio('background');
 
   }
 
@@ -64,4 +64,7 @@ export class Preload extends Phaser.Scene {
     this.scene.start('Play');
   }
 
+  loadAudio(path: string) {
+    this.load.audio(path,  ['.mp3', '.ogg', '.m4a'].map((ext) => `${path}${ext}`));
+  }
 }
