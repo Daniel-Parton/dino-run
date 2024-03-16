@@ -1,3 +1,5 @@
+import { GAME_CONFIG } from "@/config";
+
 type Options = {
   x: number;
   y: number;
@@ -8,6 +10,7 @@ export class SoundToggle extends Phaser.GameObjects.Sprite {
   baseScale: number = 0.4;
   constructor(scene: Phaser.Scene, { x, y }: Options) {
     super(scene, x, y, scene.sound.mute ? 'sound-off' : 'sound-on', 0);
+    this.setVisible(false);
     scene.add.existing(this);
     this.init();
   }
@@ -42,5 +45,7 @@ export class SoundToggle extends Phaser.GameObjects.Sprite {
         }
         event.stopPropagation();
       }, this);
+
+      this.scene.events.on(GAME_CONFIG.events.started, () => this.setVisible(true), this);
   }
 }

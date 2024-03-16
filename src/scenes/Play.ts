@@ -70,10 +70,9 @@ export class Play extends Phaser.Scene {
     this.obstacles = new Obstacles(this, this.gameSpeed);
     this.gameOver = new GameOver(this, this.handleRestart.bind(this) );
     this.score = new Score(this);
-    this.soundToggleButton = new SoundToggle(this, { x: 2, y: 2 })
+    this.fullScreenToggleButton = new FullScreenToggle(this, { x: 2, y: 2 })
       .setOrigin(0, 0);
-
-    this.fullScreenToggleButton = new FullScreenToggle(this, { x: 45, y: 2 })
+    this.soundToggleButton = new SoundToggle(this, { x: 45, y: 2 })
       .setOrigin(0, 0);
   }
 
