@@ -29,26 +29,23 @@ export class Score extends Phaser.GameObjects.Container {
     this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);
     this.best = LocalStorageHelper.getInt(this.bestScoreKey);
     const gameWidth = this.scene.scale.width;
-    this.currentText = this.scene.add.text(gameWidth, 0, '00000', {
+    this.currentText = this.scene.add.text(gameWidth - 5, 0, '00000', {
       fontSize: 25,
       fontFamily: 'Arial',
       color: '#535353',
-      resolution: 5
     }).setOrigin(1, 0);
 
     const spacing = 15;
-    this.bestText = this.scene.add.text(gameWidth - this.currentText.width - spacing, 0, this.best.toString().padStart(5, '0'), {
+    this.bestText = this.scene.add.text(gameWidth - 5 - this.currentText.width - spacing, 0, this.best.toString().padStart(5, '0'), {
       fontSize: 25,
       fontFamily: 'Arial',
       color: '#535353',
-      resolution: 2
     }).setOrigin(1, 0);
 
     this.bestTextPrefix = this.scene.add.text(gameWidth - this.currentText.width - this.bestText.width - spacing - (spacing / 2), 0, 'HI', {
       fontSize: 25,
       fontFamily: 'Arial',
       color: '#535353',
-      resolution: 2
     }).setOrigin(1, 0);
 
     

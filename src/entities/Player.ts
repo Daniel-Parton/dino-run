@@ -6,22 +6,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hasRanOnce: boolean = false;
   state: 'idle' | 'down' | 'running' | 'jumping' | 'dead' = 'idle';
   cursors: Phaser.Types.Input.Keyboard.CursorKeys;
-  idleHitBox: Phaser.Geom.Rectangle;
   idleEvent: Phaser.Time.TimerEvent;
   idleBlinks: number = 0;
   inJumpLag: boolean;
-
+  jumpTimer: number = 0;
+  jumpVelocity: number = 1550;
+  jumpGravityReduction: number = 200;
+  gravity: number = 6500;
   constructor(scene: Phaser.Scene, gameSpeed: number) {
     super(scene, 0, scene.scale.height, 'dino-run', 0);
     this.gameSpeed = gameSpeed;
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    this.setGravityY(this.gravity);
     this.init();
   }
 
   init() {
     this.cursors = this.scene.input.keyboard.createCursorKeys();
-    this.idleHitBox = new Phaser.Geom.Rectangle(0, 50, 100, this.scene.scale.height - 50);
     this.setInteractive({ cursor: 'pointer' });
     this.setOrigin(0, 1)
       .setDepth(1)
@@ -83,23 +85,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     const { space, down } = this.cursors;
-    const isSpaceJustDown = Phaser.Input.Keyboard.JustDown(space!);
+    const isSpaceJustDown = space.isDown; 
     const isOnFloor = (this.body as Phaser.Physics.Arcade.Body).onFloor();
     const isDownJustUp = Phaser.Input.Keyboard.JustUp(down!);
     
-    const pointer =this.scene.input.activePointer;
+    const pointer = this.scene.input.activePointer;
     let isClickOrTouchDown = pointer.isDown && !pointer.rightButtonDown();
 
-    //When in idle state we want the user to click on the dino to start the game
-    //On mobile the hit-box is a little small so the idle hit-box makes it a bit easier
-    if(isClickOrTouchDown && this.state === 'idle') {
-      if(!this.idleHitBox.contains(pointer.x, pointer.y)) {
-        isClickOrTouchDown = false;
-      }
-    }
-
+    const isJumping = isSpaceJustDown || isClickOrTouchDown;
     if(isOnFloor) {
-      const isJumping = isSpaceJustDown || isClickOrTouchDown;
 
       if(isJumping) {
         this.jump();
@@ -110,28 +104,50 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
           this.getDown();
         }
   
-        if(isDownJustUp || this.state === 'jumping' && !this.inJumpLag) {
-          this.run();
+        if((isDownJustUp || this.state === 'jumping' && !this.inJumpLag)) {
+          this.scene.events.emit(GAME_CONFIG. events.hitGround);
+          if(this.hasRanOnce) {
+            this.run();
+          } else {
+            this.idle();
+          }
         }
       }
+    }
+
+    //This bit allows the player to jump higher if the jump button is held down
+    //We allow the jump to be held for 30 frames, then we stop the player from jumping higher
+    if(this.state === 'jumping' && isJumping && this.jumpTimer > 0) {
+      if (this.jumpTimer > 20) { // player has been holding jump for over 30 frames, it's time to stop him
+        this.jumpTimer = 0;
+        this.setGravityY(this.gravity);
+      } else {
+        this.jumpTimer++;
+        this.setGravityY(this.body.gravity.y -this.jumpGravityReduction);
+      }
+    } else {
+      this.jumpTimer = 0;
+      //When hitting the apex of the jump we want to fall faster
+      this.setGravityY(this.body.velocity.y < -500 ? this.gravity + 1000 : this.gravity);
     }
   }
 
   jump() {
     this.state = 'jumping';
+    this.jumpTimer = 1;
     this.scene.sound.play('dino-jump');
     if(this.idleEvent) {
       this.idleEvent.remove();
     }
 
-    this.setVelocityY(-1600);
+    this.setVelocityY(-this.jumpVelocity);
     this.play('dino-blink', true);
     this.inJumpLag = true;
     //Just in case someone is spamming down and jump at the same time
-    setTimeout(() => {
+    this.scene.time.delayedCall(50, () => {
       this.inJumpLag = false;
       this.setRegularHitBox();
-    }, 50);
+    }, null, this);
   }
 
   die() {
@@ -175,6 +191,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.scene.sound.play('dino-run-start', { volume: 0.3 });
     }
     this.state = 'running'
+    this.jumpTimer = 0;
     this.play('dino-run', true);
     this.setRegularHitBox();
     if(this.getBounds().left < 50) {
@@ -184,6 +201,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   getDown() {
     this.state = 'down'
+    this.jumpTimer = 0;
     this.play('dino-down', true);
     this.scene.sound.play('dino-down', { volume: 0.5 });
     this.body.setSize(this.body.width, 58);

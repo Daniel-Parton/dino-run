@@ -26,7 +26,6 @@ export class Play extends Phaser.Scene {
 
   ground: Phaser.GameObjects.TileSprite;
   clouds: Clouds;
-  startTrigger: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
   gameOver: GameOver;
   score: Score;
   player: Player;
@@ -39,10 +38,14 @@ export class Play extends Phaser.Scene {
   create() {
     this.initEnvironment();
     this.initPlayer();
-    this.initStartTrigger();
     this.handleCollisions();
 
     this.events.on(GAME_CONFIG.events.scoreTierUpdated, this.increaseSpeed, this);
+    this.events.on(GAME_CONFIG.events.hitGround, () => {
+      if(!this.isGameRunning) {
+        this.start();
+      }
+    }, this);
   }
 
   update(_, delta: number): void {
@@ -71,24 +74,6 @@ export class Play extends Phaser.Scene {
 
   initPlayer() {
     this.player = new Player(this, this.gameSpeed);
-  }
-
-  initStartTrigger() {
-    this.startTrigger = this.physics.add.sprite(0, 10, null)
-      .setAlpha(0) 
-      .setOrigin(0, 1);
-
-    this.physics.add.overlap(this.player, this.startTrigger, () => {
-      if(this.startTrigger.y === 10) {
-        this.startTrigger.body.reset(0, this.gameHeight);
-        return;
-      }
-
-      //When the player hits the ground on the first jump we can then start the game
-      //This yeets the trigger out of the way so we don't need to worry about it
-      this.startTrigger.body.reset(9999, 9999);
-      this.start();
-    });
   }
 
   start() {

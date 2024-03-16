@@ -9,13 +9,9 @@ export const  isMobileDevice = () => {
       navigator.userAgent.match(/Windows Phone/i))
   }
 
-type HeightWidth = { width: number, height: number };
-
-export const DesktopSize: HeightWidth = { width: 800, height: 600 };
-export const MobileSize: HeightWidth = { width: 540, height: 960 };
-
-export const ShouldBeMobileSize = () => window.innerWidth < window.innerHeight;
-
-export const GetSizeByWindow = () => {
-  return ShouldBeMobileSize() ? MobileSize : DesktopSize;
+export const tryResumeGameSound = (game: Phaser.Game) => {
+  const soundContext = (game.sound as Phaser.Sound.WebAudioSoundManager).context;
+  if(soundContext && soundContext.state === 'suspended') {
+    soundContext.resume();
+  }
 }

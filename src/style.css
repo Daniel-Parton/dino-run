@@ -20,6 +20,7 @@ body {
 }
 
 #game-container {
+  background-color: #FFFFFF;
   aspect-ratio: 100/34;
   max-width: 1000px;
   width: 100%;
