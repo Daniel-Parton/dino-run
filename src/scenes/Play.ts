@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from '@/config';
 import { Clouds } from '@/entities/Clouds';
+import { FullScreenToggle } from '@/entities/FullScreenToggle';
 import { GameOver } from '@/entities/GameOver';
 import { Obstacles } from '@/entities/Obstacles';
 import { Player } from '@/entities/Player';
@@ -19,6 +20,7 @@ export class Play extends Phaser.Scene {
   backgroundMusic: Phaser.Sound.BaseSound;
   backgroundLoseMusic: Phaser.Sound.BaseSound;
   soundToggleButton: SoundToggle;
+  fullScreenToggleButton: FullScreenToggle;
 
   get gameSpeed() {
     return this.gameSpeedBase * this.gameSpeedModifier;
@@ -69,6 +71,9 @@ export class Play extends Phaser.Scene {
     this.gameOver = new GameOver(this, this.handleRestart.bind(this) );
     this.score = new Score(this);
     this.soundToggleButton = new SoundToggle(this, { x: 2, y: 2 })
+      .setOrigin(0, 0);
+
+    this.fullScreenToggleButton = new FullScreenToggle(this, { x: 45, y: 2 })
       .setOrigin(0, 0);
   }
 

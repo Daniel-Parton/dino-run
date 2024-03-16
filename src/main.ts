@@ -9,7 +9,6 @@ const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   height: 340,
   width: 1000,
-  backgroundColor: '#FFFFFF',
   min: {
     width: 340,
     height: 0
@@ -27,7 +26,8 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-  } as any,
+    fullscreenTarget: 'game-container'
+  },
   scene: [
     Boot,
     Preload,
@@ -39,17 +39,19 @@ const game = new Phaser.Game(config);
 
 document.body.addEventListener('click', () => tryResumeGameSound(game));
 document.body.addEventListener('touchend', () => {
-  tryResumeGameSound(game);
   if(isMobileDevice()) {
     game.scale.startFullscreen();
   }
+  tryResumeGameSound(game);
 });
 
 
 game.scale.on('enterfullscreen', () => {
-  game.canvas.parentElement.style.backgroundColor = "#FFFFFF";
+  game.scale.refresh();
   const orientation = screen.orientation as any;
-  orientation.lock?.('landscape').catch(function(error) {
-    console.error("Orientation lock error: " + error);
-  });
+  if(isMobileDevice()) {
+    orientation.lock?.('landscape').catch(function(error) {
+      console.error("Orientation lock error: " + error);
+    });
+  }
 })

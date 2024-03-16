@@ -51,6 +51,9 @@ export class Preload extends Phaser.Scene {
     this.load.image('sound-on', 'sound-on.png');
     this.load.image('sound-off', 'sound-off.png');
 
+    //Full screen
+    this.load.image('full-screen', 'full-screen.png');
+
     //Score
     this.loadAudio('score');
 
